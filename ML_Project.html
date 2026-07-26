@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Salary Predictor | Enterprise Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* === متغيرات الألوان (الكحلي والبرتقالي) === */
+        :root {
+            --bg-darkest: #040d1a;
+            --bg-navy: #0a192f;
+            --bg-card: #112240;
+            --bg-card-hover: #233554;
+            --orange-primary: #ff6d00;
+            --orange-dark: #e65100;
+            --orange-glow: rgba(255, 109, 0, 0.3);
+            --text-main: #ccd6f6;
+            --text-muted: #8892b0;
+            --white: #ffffff;
+            --transition-slow: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-fast: all 0.3s ease;
+        }
+
+        /* === الإعدادات الأساسية === */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Tajawal', sans-serif; }
+        
+        body {
+            background-color: var(--bg-darkest);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* خلفية متحركة (Animated Particles/Glow) */
+        .bg-glow {
+            position: absolute; width: 600px; height: 600px;
+            background: radial-gradient(circle, var(--orange-glow) 0%, transparent 60%);
+            top: -200px; right: -200px; border-radius: 50%;
+            animation: pulseGlow 8s infinite alternate;
+            z-index: 0; pointer-events: none;
+        }
+        .bg-glow-2 {
+            position: absolute; width: 800px; height: 800px;
+            background: radial-gradient(circle, rgba(10, 25, 47, 0.8) 0%, transparent 60%);
+            bottom: -300px; left: -200px; border-radius: 50%;
+            z-index: 0; pointer-events: none;
+        }
+
+        @keyframes pulseGlow { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.2); opacity: 1; } }
+
+        /* === حاوية العرض === */
+        .deck-container {
+            width: 92vw; height: 88vh;
+            background: rgba(10, 25, 47, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 30px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+            position: relative; z-index: 1; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        /* === شريط التقدم === */
+        .progress-wrapper { width: 100%; height: 4px; background: rgba(255,255,255,0.05); }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, var(--orange-dark), var(--orange-primary)); width: 0%; transition: width 0.5s ease; box-shadow: 0 0 10px var(--orange-primary); }
+
+        /* === الشرائح (Slides) === */
+        .slides-area { flex-grow: 1; position: relative; padding: 60px 80px; }
+        .slide {
+            position: absolute; top: 60px; left: 80px; right: 80px; bottom: 80px;
+            opacity: 0; visibility: hidden;
+            transform: translateX(100px) scale(0.95);
+            transition: var(--transition-slow);
+            display: flex; flex-direction: column;
+        }
+        .slide.active { opacity: 1; visibility: visible; transform: translateX(0) scale(1); }
+        .slide.exit-left { transform: translateX(-100px) scale(0.95); opacity: 0; }
+
+        /* === الأنيميشن الداخلي للعناصر === */
+        .active .animate-up { animation: fadeInUp 0.8s forwards cubic-bezier(0.16, 1, 0.3, 1); opacity: 0; transform: translateY(30px); }
+        .active .delay-1 { animation-delay: 0.2s; } .active .delay-2 { animation-delay: 0.4s; }
+        .active .delay-3 { animation-delay: 0.6s; } .active .delay-4 { animation-delay: 0.8s; }
+
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+
+        /* === النصوص والتايبوجرافي === */
+        .badge {
+            background: rgba(255, 109, 0, 0.1); color: var(--orange-primary);
+            padding: 8px 24px; border-radius: 50px; font-weight: 800;
+            font-size: 1.1rem; width: max-content; margin-bottom: 20px;
+            border: 1px solid rgba(255, 109, 0, 0.3); text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        h1 { font-size: 4rem; color: var(--white); font-weight: 900; line-height: 1.2; margin-bottom: 20px; text-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        h1 span { color: var(--orange-primary); }
+        h2 { font-size: 2.8rem; color: var(--white); margin-bottom: 30px; font-weight: 800; display: inline-block; position: relative; }
+        h2::after { content: ''; position: absolute; right: 0; bottom: -10px; width: 40%; height: 5px; background: var(--orange-primary); border-radius: 5px; transition: width 0.5s ease; }
+        .slide:hover h2::after { width: 100%; }
+        
+        p { font-size: 1.3rem; color: var(--text-muted); line-height: 1.9; margin-bottom: 25px; }
+        strong { color: var(--white); font-weight: 700; }
+
+        /* === البطاقات (Glass Cards) === */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; height: 100%; align-items: center; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+        
+        .card {
+            background: var(--bg-card); border-radius: 20px; padding: 35px;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: var(--transition-fast); position: relative; overflow: hidden;
+        }
+        .card::before {
+            content: ''; position: absolute; top: 0; right: 0; width: 4px; height: 0;
+            background: var(--orange-primary); transition: height 0.4s ease;
+        }
+        .card:hover { transform: translateY(-10px); background: var(--bg-card-hover); border-color: rgba(255, 109, 0, 0.3); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .card:hover::before { height: 100%; }
+        .card i { font-size: 2.8rem; color: var(--orange-primary); margin-bottom: 20px; display: block; }
+        .card h3 { font-size: 1.6rem; color: var(--white); margin-bottom: 15px; }
+
+        /* === العدادات الذكية (Smart Counters) === */
+        .stat-box {
+            text-align: center; background: rgba(17, 34, 64, 0.8); padding: 30px;
+            border-radius: 20px; border: 1px solid rgba(255, 109, 0, 0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .counter-value { font-size: 4.5rem; font-weight: 900; color: var(--orange-primary); line-height: 1; margin-bottom: 10px; font-family: system-ui, -apple-system, sans-serif;}
+        .stat-label { font-size: 1.3rem; font-weight: 700; color: var(--text-main); }
+
+        /* === الرسوم البيانية الدقيقة (Animated Charts) === */
+        .chart-wrapper { width: 100%; display: flex; flex-direction: column; gap: 20px; margin-top: 20px; }
+        .bar-container { display: flex; align-items: center; gap: 25px; }
+        .bar-title { width: 200px; font-size: 1.2rem; font-weight: 700; color: var(--text-main); text-align: left; direction: ltr;}
+        .bar-track { flex-grow: 1; height: 20px; background: var(--bg-card); border-radius: 10px; overflow: hidden; position: relative; }
+        .bar-fill { height: 100%; background: linear-gradient(90deg, var(--orange-dark), var(--orange-primary)); width: 0; border-radius: 10px; position: relative; }
+        .bar-fill::after { content: ''; position: absolute; top:0; right:0; bottom:0; width: 4px; background: #fff; box-shadow: 0 0 10px #fff, 0 0 20px var(--orange-primary); }
+        .bar-percent { width: 80px; font-size: 1.3rem; font-weight: 900; color: var(--orange-primary); text-align: right; direction: ltr; opacity: 0; transition: opacity 0.5s ease 1s;}
+
+        .active .bar-percent { opacity: 1; }
+
+        /* === خط الأنابيب (Pipeline Flow) === */
+        .pipeline { display: flex; justify-content: space-between; align-items: center; margin-top: 40px; position: relative; }
+        .pipeline::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: var(--bg-card-hover); z-index: 0; }
+        .pipe-node { width: 22%; background: var(--bg-card); border: 2px solid var(--orange-primary); border-radius: 15px; padding: 20px; text-align: center; position: relative; z-index: 1; transition: var(--transition-fast); }
+        .pipe-node:hover { transform: scale(1.05); background: var(--orange-primary); color: #fff; }
+        .pipe-node:hover h3, .pipe-node:hover i { color: #fff; }
+        .pipe-node i { font-size: 2rem; color: var(--orange-primary); margin-bottom: 10px; }
+        .pipe-node h3 { font-size: 1.2rem; color: var(--white); }
+
+        /* === أزرار التحكم === */
+        .nav-panel {
+            position: absolute; bottom: 40px; left: 80px; right: 80px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .slide-indicator { font-size: 1.2rem; font-weight: 700; color: var(--text-muted); letter-spacing: 2px; }
+        .slide-indicator span { color: var(--orange-primary); font-size: 1.5rem; }
+        .btn-group { display: flex; gap: 20px; direction: ltr; }
+        .btn {
+            width: 60px; height: 60px; border-radius: 50%; background: var(--bg-card); color: var(--orange-primary);
+            border: 1px solid rgba(255, 109, 0, 0.3); cursor: pointer; font-size: 1.5rem;
+            display: flex; justify-content: center; align-items: center;
+            transition: var(--transition-fast);
+        }
+        .btn:hover:not(:disabled) { background: var(--orange-primary); color: var(--white); transform: scale(1.1); box-shadow: 0 10px 20px rgba(255, 109, 0, 0.4); }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: transparent; }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+    <div class="bg-glow-2"></div>
+
+    <div class="deck-container">
+        <div class="progress-wrapper"><div class="progress-bar" id="progressBar"></div></div>
+        
+        <div class="slides-area">
+            
+            <div class="slide active">
+                <div style="display: flex; flex-direction: column; justify-content: center; height: 100%; align-items: center; text-align: center;">
+                    <div class="badge animate-up">Project.Predictive_Analytics()</div>
+                    <h1 class="animate-up delay-1">توقع رواتب <span>الذكاء الاصطناعي</span></h1>
+                    <p class="animate-up delay-2" style="font-size: 1.6rem; max-width: 900px; margin-bottom: 50px;">منظومة تعلم آلي متطورة تعتمد على الانحدار (Regression) لتحليل وتسعير الكفاءات التقنية في السوق العالمي بدقة فائقة.</p>
+                    
+                    <div class="grid-2 animate-up delay-3" style="width: 100%; max-width: 800px; gap: 30px;">
+                        <div class="card" style="text-align: center; background: rgba(17, 34, 64, 0.5);">
+                            <i class="fas fa-code-branch"></i>
+                            <h3>مريم الناصري</h3>
+                            <p style="margin:0;">Machine Learning & Architecture</p>
+                        </div>
+                        <div class="card" style="text-align: center; background: rgba(17, 34, 64, 0.5);">
+                            <i class="fas fa-chart-network"></i>
+                            <h3>آيات الشريفي</h3>
+                            <p style="margin:0;">Data Science & Analytics</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <div class="badge animate-up">Problem Statement</div>
+                <h2 class="animate-up delay-1">معضلة تسعير الكفاءات</h2>
+                <div class="grid-2">
+                    <div class="animate-up delay-2">
+                        <p>في سوق متسارع مثل <strong>الذكاء الاصطناعي</strong>، تعتمد الشركات والباحثين عن عمل على "التخمين" في تحديد الرواتب، مما يؤدي إلى فجوات في الأجور.</p>
+                        <p><strong>هدفنا الاستراتيجي:</strong> استبدال التخمين البشري بنموذج رياضي يستند للبيانات التاريخية لتوقع الراتب بناءً على مدخلات دقيقة (الخبرة، المقر، المسمى).</p>
+                    </div>
+                    <div class="card animate-up delay-3" style="border-right: 4px solid var(--orange-primary);">
+                        <i class="fas fa-bullseye"></i>
+                        <h3>الهدف القياسي (KPI)</h3>
+                        <p style="margin-bottom: 0;">بناء خوارزمية تتجاوز دقتها حاجز الـ <strong>80% (R² Score)</strong> لضمان موثوقية النتائج وإمكانية اعتمادها في بيئة الإنتاج الحقيقية.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <div class="badge animate-up">Data Foundation</div>
+                <h2 class="animate-up delay-1">هيكلة البيانات الضخمة</h2>
+                <p class="animate-up delay-2">تم تدريب النماذج على قاعدة بيانات عالمية ضخمة تغطي أسواق العمل في قارات مختلفة (أمريكا، أوروبا، آسيا).</p>
+                
+                <div class="grid-3" style="margin-top: 40px;">
+                    <div class="stat-box animate-up delay-1">
+                        <div class="counter-value" data-target="15000">0</div>
+                        <div class="stat-label">سجل وظيفي (Records)</div>
+                    </div>
+                    <div class="stat-box animate-up delay-2">
+                        <div class="counter-value" data-target="18">0</div>
+                        <div class="stat-label">خصائص مستقلة (Features)</div>
+                    </div>
+                    <div class="stat-box animate-up delay-3">
+                        <div class="counter-value" data-target="1">0</div>
+                        <div class="stat-label">متغير مستهدف (Target)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <div class="badge animate-up">Phase I: Discovery</div>
+                <h2 class="animate-up delay-1">تحليل السلوك الإحصائي (EDA)</h2>
+                <p class="animate-up delay-2">نفذنا 8 تحليلات استكشافية لفهم تشريح البيانات. المخرجات الأهم كانت:</p>
+                
+                <div class="grid-2">
+                    <div class="card animate-up delay-3">
+                        <i class="fas fa-project-diagram"></i>
+                        <h3>مصفوفة الارتباط الخفية</h3>
+                        <p>أثبت التحليل وجود معامل ارتباط طردي قوي <strong>(0.74)</strong> بين سنوات الخبرة ومستوى الدخل، يليه تأثير العمل عن بعد.</p>
+                    </div>
+                    <div class="card animate-up delay-4">
+                        <i class="fas fa-wave-square"></i>
+                        <h3>اكتشاف الالتواء (Skewness)</h3>
+                        <p>لاحظنا تمركز الرواتب بشكل كثيف في الفئات المتوسطة، مع امتداد ذيل طويل جهة اليمين يمثل "الرواتب الفلكية" لكبار المدراء.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <div class="badge animate-up">Phase I: Deep Insight</div>
+                <h2 class="animate-up delay-1">مفارقة "سقف المسمى الوظيفي"</h2>
+                <div class="grid-2">
+                    <div class="animate-up delay-2">
+                        <p>من أهم اكتشافاتنا البصرية أن زيادة سنوات الخبرة <strong>لا تعني بالضرورة</strong> زيادة أبدية في الراتب.</p>
+                        <p>البيانات أثبتت أن من يمتلك خبرة 20 سنة في وظيفة "مستشار" قد يتقاضى أقل من شاب بخبرة 10 سنوات، لأن مسار الـ 20 سنة يتطلب <strong>الترقية الإدارية (Director)</strong> لاختراق سقف الراتب.</p>
+                    </div>
+                    <div class="card animate-up delay-3" style="background: rgba(255, 109, 0, 0.1); border-color: var(--orange-primary);">
+                        <i class="fas fa-lightbulb" style="color: var(--white);"></i>
+                        <h3 style="color: var(--orange-primary);">تأثير هذا الاكتشاف</h3>
+                        <p style="margin: 0;">هذا النمط المعقد يثبت أن الخوارزميات الخطية (Linear) ستفشل هنا، ونحتاج لخوارزميات تعتمد على اتخاذ القرار (Tree-based) لفهم هذا السلوك البشري.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <div class="badge animate-up">Phase II: Engineering</div>
+                <h2 class="animate-up delay-1">هندسة خطوط المعالجة (Pipeline)</h2>
+                <p class="animate-up delay-2">البيانات الخام لا تغذي الذكاء الاصطناعي. قمنا بتنفيذ سلسلة هندسية صارمة:</p>
+                
+                <div class="pipeline animate-up delay-3">
+                    <div class="pipe-node">
+                        <i class="fas fa-broom"></i>
+                        <h3>Clean & Drop</h3>
+                        <span style="font-size: 0.9rem; color: var(--text-muted);">علاج النواقص والشواذ</span>
+                    </div>
+                    <div class="pipe-node">
+                        <i class="fas fa-barcode"></i>
+                        <h3>Encoding</h3>
+                        <span style="font-size: 0.9rem; color: var(--text-muted);">تشفير الفئات (84 عمود)</span>
+                    </div>
+                    <div class="pipe-node">
+                        <i class="fas fa-balance-scale"></i>
+                        <h3>Up-Sampling</h3>
+                        <span style="font-size: 0.9rem; color: var(--text-muted);">موازنة البيانات</span>
+                    </div>
+                    <div class="pipe-node" style="border-color: #fff; background: var(--orange-dark);">
+                        <i class="fas fa-ruler-combined" style="color:#fff;"></i>
+                        <h3 style="color:#fff;">Standard Scale</h3>
+                        <span style="font-size: 0.9rem; color: #fff;">توحيد النطاق</span>
+                    </div>
+                </div>
+                <p class="animate-up delay-4" style="text-align: center; margin-top: 30px; font-weight: bold; color: var(--orange-primary);">تطبيق تقنية الموازنة (Up-sampling) ورفع السجلات إلى 27,738 كان الجوهرة التي حسمت دقة النماذج ومنعت الانحياز.</p>
+            </div>
+
+            <div class="slide">
+                <div class="badge animate-up">Phase III: Modeling</div>
+                <h2 class="animate-up delay-1">ترسانة الخوارزميات</h2>
+                <p class="animate-up delay-2">لاختبار الفرضيات، قمنا ببرمجة وضبط المعلمات لـ 6 خوارزميات انحدار تعمل بشكل متوازٍ لتحديد الأفضل بناءً على معيار R² Score:</p>
+                
+                <div class="grid-3 animate-up delay-3" style="margin-top: 30px;">
+                    <div class="card" style="padding: 20px;"><h3 style="margin:0; font-size:1.3rem;">1. Linear Regression</h3></div>
+                    <div class="card" style="padding: 20px;"><h3 style="margin:0; font-size:1.3rem;">2. Polynomial (D2)</h3></div>
+                    <div class="card" style="padding: 20px;"><h3 style="margin:0; font-size:1.3rem;">3. KNN Regressor</h3></div>
+                    <div class="card" style="padding: 20px;"><h3 style="margin:0; font-size:1.3rem;">4. AdaBoost</h3></div>
+                    <div class="card" style="padding: 20px; border: 1px solid var(--orange-primary);"><h3 style="margin:0; font-size:1.3rem; color:var(--orange-primary);">5. Random Forest 🏆</h3></div>
+                    <div class="card" style="padding: 20px; border: 1px solid var(--orange-primary);"><h3 style="margin:0; font-size:1.3rem; color:var(--orange-primary);">6. XGBoost 🏆</h3></div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <div class="badge animate-up">Phase IV: Evaluation</div>
+                <h2 class="animate-up delay-1">التقييم الشامل ودقة النماذج</h2>
+                <p class="animate-up delay-2">النتائج النهائية أثبتت سحق النماذج الشجرية المتقدمة للنماذج الخطية، محطمة حاجز الـ 80% بكفاءة عالية:</p>
+                
+                <div class="chart-wrapper animate-up delay-3">
+                    <div class="bar-container">
+                        <div class="bar-title">Random Forest</div>
+                        <div class="bar-track"><div class="bar-fill" data-width="96.76"></div></div>
+                        <div class="bar-percent">96.76%</div>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-title">ْXGBoost</div>
+                        <div class="bar-track"><div class="bar-fill" data-width="96.37"></div></div>
+                        <div class="bar-percent">96.37%</div>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-title">Polynomial</div>
+                        <div class="bar-track"><div class="bar-fill" data-width="94.37"></div></div>
+                        <div class="bar-percent">94.37%</div>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-title">Linear Reg</div>
+                        <div class="bar-track"><div class="bar-fill" data-width="89.48"></div></div>
+                        <div class="bar-percent">89.48%</div>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-title">KNN Reg</div>
+                        <div class="bar-track"><div class="bar-fill" data-width="82.92"></div></div>
+                        <div class="bar-percent">82.92%</div>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-title">AdaBoost</div>
+                        <div class="bar-track"><div class="bar-fill" data-width="77.25"></div></div>
+                        <div class="bar-percent">77.25%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slide">
+                <div class="badge animate-up">Final Phase: Production</div>
+                <h2 class="animate-up delay-1">نشر النظام (Deployment)</h2>
+                <div class="grid-2">
+                    <div class="animate-up delay-2">
+                        <p>لم نكتفِ بالأكواد الصامتة، بل حوّلنا النموذج إلى منتج برمجي متكامل:</p>
+                        <ul>
+                            <li style="margin-bottom: 15px; color: var(--text-main);"><i class="fas fa-save" style="color: var(--orange-primary); margin-left: 10px;"></i> <strong>Persistence:</strong> حفظ الخوارزمية الفائزة (Random Forest) بصيغ .joblib للاستدعاء السريع.</li>
+                            <li style="margin-bottom: 15px; color: var(--text-main);"><i class="fas fa-desktop" style="color: var(--orange-primary); margin-left: 10px;"></i> <strong>Gradio UI:</strong> تصميم واجهة تفاعلية ديناميكية.</li>
+                            <li style="margin-bottom: 15px; color: var(--text-main);"><i class="fas fa-bolt" style="color: var(--orange-primary); margin-left: 10px;"></i> <strong>Real-time:</strong> معالجة مدخلات المستخدم لحظياً لطباعة الراتب المتوقع بالدولار.</li>
+                        </ul>
+                    </div>
+                    <div class="card animate-up delay-3" style="text-align: center; border-color: var(--orange-primary); background: rgba(255, 109, 0, 0.05);">
+                        <i class="fas fa-check-circle" style="font-size: 6rem;"></i>
+                        <h2 style="margin: 20px 0 0 0; border: none;">المشروع مكتمل</h2>
+                        <p style="margin-top: 10px;">جاهزون لعرض الواجهة التفاعلية!</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="nav-panel">
+            <div class="slide-indicator">Slide <span id="slideNum">1</span> / 9</div>
+            <div class="btn-group">
+                <button class="btn" id="prevBtn" disabled><i class="fas fa-chevron-left"></i></button>
+                <button class="btn" id="nextBtn"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const nextBtn = document.getElementById('nextBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const slideNum = document.getElementById('slideNum');
+        const progressBar = document.getElementById('progressBar');
+        let currentSlide = 0;
+        let countersAnimated = []; // To track which slides had their counters animated
+
+        function initSlides() {
+            slides.forEach((slide, i) => { countersAnimated[i] = false; });
+            updateDeck();
+        }
+
+        function updateDeck() {
+            slides.forEach((slide, index) => {
+                slide.classList.remove('active', 'exit-left');
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                    triggerSlideSpecificAnimations(slide, index);
+                } else if (index < currentSlide) {
+                    slide.classList.add('exit-left');
+                }
+            });
+
+            // Update UI Controls
+            slideNum.innerText = currentSlide + 1;
+            progressBar.style.width = ((currentSlide + 1) / slides.length) * 100 + '%';
+            prevBtn.disabled = currentSlide === 0;
+            nextBtn.disabled = currentSlide === slides.length - 1;
+        }
+
+        function triggerSlideSpecificAnimations(slide, index) {
+            // 1. Smart Number Counters (Slide 3)
+            if(slide.querySelector('.counter-value') && !countersAnimated[index]) {
+                const counters = slide.querySelectorAll('.counter-value');
+                counters.forEach((counter, idx) => {
+                    setTimeout(() => {
+                        const target = +counter.getAttribute('data-target');
+                        const duration = 2000; // 2 seconds
+                        const increment = target / (duration / 16); // 60fps
+                        let current = 0;
+                        const updateCounter = () => {
+                            current += increment;
+                            if(current < target) {
+                                counter.innerText = Math.ceil(current).toLocaleString();
+                                requestAnimationFrame(updateCounter);
+                            } else {
+                                counter.innerText = target === 15000 ? "15,000+" : target;
+                            }
+                        };
+                        updateCounter();
+                    }, 500 + (idx * 200)); // Stagger start times
+                });
+                countersAnimated[index] = true;
+            }
+
+            // 2. Animate Bar Charts (Slide 8)
+            if(slide.querySelector('.bar-fill')) {
+                const bars = slide.querySelectorAll('.bar-fill');
+                bars.forEach(bar => {
+                    // Reset width first
+                    bar.style.width = '0%';
+                    // Add delay to let slide transition finish, then fill
+                    setTimeout(() => {
+                        const targetWidth = bar.getAttribute('data-width');
+                        bar.style.width = targetWidth + '%';
+                    }, 800);
+                });
+            }
+        }
+
+        nextBtn.addEventListener('click', () => { if (currentSlide < slides.length - 1) { currentSlide++; updateDeck(); } });
+        prevBtn.addEventListener('click', () => { if (currentSlide > 0) { currentSlide--; updateDeck(); } });
+
+        // Keyboard Navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && currentSlide < slides.length - 1) { currentSlide++; updateDeck(); }
+            else if (e.key === 'ArrowRight' && currentSlide > 0) { currentSlide--; updateDeck(); }
+        });
+
+        // Initialize
+        initSlides();
+    </script>
+</body>
+</html>
